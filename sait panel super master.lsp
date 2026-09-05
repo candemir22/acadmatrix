@@ -77,7 +77,7 @@
       (list "Kare Ciz"   "KARECIZ")
       (list "Ucgen Ciz"  "UCGENCIZ")
       (list "SATCW1"     "SATCW1")
-      (list "" "")
+      (list "kopyala" "copy")
       (list "" "")
       (list "" "")
     )
