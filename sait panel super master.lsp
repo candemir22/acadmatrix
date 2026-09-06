@@ -102,6 +102,6 @@
 ;; >>> B. DXF BLOK LISTESI
 ;; ============================================================
 (SaitDxfBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/bloklar/genel_cephe1.dxf")
-
+(SaitDxfBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/blocks/genel_cephe1.dxf")
 (princ "\n[SaitAI]: Sistem Hazir!")
 (princ)
