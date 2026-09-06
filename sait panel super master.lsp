@@ -1,15 +1,26 @@
  ;;; ============================================================
-;;; SAIT PANEL SUPER MASTER -- BULUT YUKLEYICI (DWG KESIN COZUM)
+;;; SAIT PANEL SUPER MASTER -- BULUT YUKLEYICI (KESIN COZUM)
 ;;; ============================================================
 (vl-load-com)
 
+;; 1. GUVENLI LISP CEKME FONKSIYONU
 (defun SaitScriptCek (url / h tmp f code res)
   (setq h (vlax-create-object "MSXML2.XMLHTTP"))
   (if h
     (progn
-      (setq res (vl-catch-all-apply '(lambda () (vlax-invoke-method h 'open "GET" url :vlax-false) (vlax-invoke-method h 'send) (vlax-get-property h 'responseText))))
-      (vlax-release-object h)
-      (if (and (not (vl-catch-all-error-p res)) (= (type res) 'STR) (> (strlen res) 0))
+      (setq res (vl-catch-all-apply
+                  '(lambda ()
+                     (vlax-invoke-method h 'open "GET" url :vlax-false)
+                     (vlax-invoke-method h 'send)
+                     (vlax-get-property h 'responseText)
+                   )
+                )
+      )
+      (vlax-release-object h) 
+
+      (if (and (not (vl-catch-all-error-p res))
+               (= (type res) 'STR)
+               (> (strlen res) 0))
         (progn
           (setq tmp (vl-filename-mktemp "sait" nil ".lsp"))
           (setq f (open tmp "w"))
@@ -24,6 +35,7 @@
   (princ)
 )
 
+;; 2. BULUTTAN DOSYAYI DISKE INDIREN SISTEM FONKSIYONU
 (defun SaitBulutIndir (url yerel-yol / xmlhttp stream status)
   (setq xmlhttp (vlax-create-object "MSXML2.XMLHTTP"))
   (if xmlhttp
@@ -34,10 +46,10 @@
       (if (= status 200)
         (progn
           (setq stream (vlax-create-object "ADODB.Stream"))
-          (vlax-put-property stream 'Type 1)
+          (vlax-put-property stream 'Type 1) ; Binary Mode
           (vlax-invoke-method stream 'open)
           (vlax-invoke-method stream 'write (vlax-get-property xmlhttp 'responseBody))
-          (vlax-invoke-method stream 'saveToFile yerel-yol 2)
+          (vlax-invoke-method stream 'saveToFile yerel-yol 2) ; Save & Overwrite
           (vlax-invoke-method stream 'close)
           (vlax-release-object stream)
         )
@@ -48,8 +60,8 @@
   (findfile yerel-yol)
 )
 
-;; ARTIK DOSYALARI DWG OLARAK INDIRIYORUZ
-(defun SaitBlokCek (url / blok-adi temp-yol)
+;; 3. DXF EKLEME MOTORU
+(defun SaitDxfCek (url / blok-adi temp-yol)
   (setq blok-adi (vl-filename-base url))
   (if (tblsearch "BLOCK" blok-adi)
     (progn
@@ -58,7 +70,7 @@
     )
     (progn
       (princ (strcat "\n[SAT Bulut]: '" blok-adi "' indiriliyor..."))
-      (setq temp-yol (strcat (getenv "TEMP") "\\" blok-adi ".dwg"))
+      (setq temp-yol (strcat (getenv "TEMP") "\\" blok-adi ".dxf"))
       (if (SaitBulutIndir url temp-yol)
         (progn
           (princ "\n[SAT Bulut]: Indirme tamamlandi, ekleniyor...")
@@ -72,12 +84,13 @@
   (princ)
 )
 
-(defun SaitBlokBagla (komut-adi url)
-  (eval (list 'defun (read (strcat "c:" komut-adi)) '() (list 'SaitBlokCek url)))
+;; 4. DXF BAGLANTI FONKSIYONU
+(defun SaitDxfBagla (komut-adi url)
+  (eval (list 'defun (read (strcat "c:" komut-adi)) '() (list 'SaitDxfCek url)))
 )
 
 ;; ============================================================
-;; LISP VE BLOK LISTESI
+;; >>> A. LISP LISTESI
 ;; ============================================================
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/satjsonyazveoku.lsp")
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/DAIRECIZ.lsp")
@@ -85,8 +98,10 @@
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/LINECIZ.lsp")
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/UCGENCIZ.lsp")
 
-;; ALT SATIRA DIKKAT: ARTIK .DWG UZANTILI
-(SaitBlokBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/bloklar/genel_cephe1.dwg")
+;; ============================================================
+;; >>> B. DXF BLOK LISTESI
+;; ============================================================
+(SaitDxfBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/bloklar/genel_cephe1.dxf")
 
-(princ "\n[SaitAI]: Sistem Hazir (DWG Modu)!")
+(princ "\n[SaitAI]: Sistem Hazir!")
 (princ)
