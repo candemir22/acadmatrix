@@ -86,7 +86,7 @@
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/UCGENCIZ.lsp")
 
 ;; ALT SATIRA DIKKAT: ARTIK .DWG UZANTILI
-(SaitBlokBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/bloklar/genel_cephe1.dwg")
+(SaitBlokBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/blocks/genel_cephe1.dwg")
 
 (princ "\n[SaitAI]: Sistem Hazir (DWG Modu)!")
 (princ)
