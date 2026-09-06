@@ -1,95 +1,92 @@
- (vl-load-com)
+ ;;; ============================================================
+;;; SAIT PANEL SUPER MASTER -- BULUT YUKLEYICI (DWG KESIN COZUM)
+;;; ============================================================
+(vl-load-com)
 
-;; ==================================================
-;; 1) BULUT DOSYA INDIRME MOTORU (V2 - KUSURSUZ)
-;; ==================================================
-(defun SaitBulutIndir (url yerel-yol / webObj streamObj)
-  (setq webObj (vlax-create-object "MSXML2.XMLHTTP"))
-  (if webObj
+(defun SaitScriptCek (url / h tmp f code res)
+  (setq h (vlax-create-object "MSXML2.XMLHTTP"))
+  (if h
     (progn
-      (vlax-invoke-method webObj 'Open "GET" url :vlax-false)
-      (vlax-invoke-method webObj 'Send)
-      (if (= (vlax-get-property webObj 'Status) 200)
+      (setq res (vl-catch-all-apply '(lambda () (vlax-invoke-method h 'open "GET" url :vlax-false) (vlax-invoke-method h 'send) (vlax-get-property h 'responseText))))
+      (vlax-release-object h)
+      (if (and (not (vl-catch-all-error-p res)) (= (type res) 'STR) (> (strlen res) 0))
         (progn
-          (setq streamObj (vlax-create-object "ADODB.Stream"))
-          (vlax-put-property streamObj 'Type 1)
-          (vlax-invoke-method streamObj 'Open)
-          (vlax-invoke-method streamObj 'Write (vlax-get-property webObj 'ResponseBody))
-          (vlax-invoke-method streamObj 'SaveToFile yerel-yol 2)
-          (vlax-invoke-method streamObj 'Close)
-          (vlax-release-object streamObj)
+          (setq tmp (vl-filename-mktemp "sait" nil ".lsp"))
+          (setq f (open tmp "w"))
+          (write-line res f)
+          (close f)
+          (vl-catch-all-apply 'load (list tmp))
+          (vl-catch-all-apply 'vl-file-delete (list tmp))
         )
       )
-      (vlax-release-object webObj)
-    )
-  )
-)
-
-;; ==================================================
-;; 2) LISP (.LSP) CEKME VE YUKLEME
-;; ==================================================
-(defun SaitScriptCek (url / dosya-adi temp-dir yerel-yol)
-  (setq dosya-adi (vl-filename-base url))
-  (setq temp-dir (getenv "TEMP"))
-  (setq yerel-yol (strcat temp-dir "\\" dosya-adi ".lsp"))
-  
-  (if (findfile yerel-yol) (vl-file-delete yerel-yol))
-  (SaitBulutIndir url yerel-yol)
-  
-  (if (findfile yerel-yol)
-    (progn
-      (load yerel-yol)
-      (princ (strcat "\n[" (strcase dosya-adi) "] yuklendi. Komut: " (strcase dosya-adi)))
     )
   )
   (princ)
 )
 
-;; ==================================================
-;; 3) DWG BLOK CEKME VE YERLESTIRME (V2 DUZELTMESI BURADA)
-;; ==================================================
-(defun SaitBlokCek (url / dosya-adi temp-dir yerel-yol)
-  (setq dosya-adi (vl-filename-base url))
-  (setq temp-dir (getenv "TEMP"))
-  (setq yerel-yol (strcat temp-dir "\\" dosya-adi ".dwg"))
-  
-  (princ (strcat "\n[SAT Bulut]: '" dosya-adi "' indiriliyor..."))
-  
-  (if (findfile yerel-yol) (vl-file-delete yerel-yol))
-  (SaitBulutIndir url yerel-yol)
-  
-  (if (findfile yerel-yol)
+(defun SaitBulutIndir (url yerel-yol / xmlhttp stream status)
+  (setq xmlhttp (vlax-create-object "MSXML2.XMLHTTP"))
+  (if xmlhttp
     (progn
-      (princ "\n[SAT Bulut]: Blok indirildi, ekrana tiklayarak yerlestirin...")
-      ;; HATA BURADA COZULDU: _.-insert ve eksik parametreler (pause 1 1 0) eklendi!
-      (command "_.-insert" yerel-yol pause 1 1 0)
+      (vlax-invoke-method xmlhttp 'open "GET" url :vlax-false)
+      (vlax-invoke-method xmlhttp 'send)
+      (setq status (vlax-get-property xmlhttp 'status))
+      (if (= status 200)
+        (progn
+          (setq stream (vlax-create-object "ADODB.Stream"))
+          (vlax-put-property stream 'Type 1)
+          (vlax-invoke-method stream 'open)
+          (vlax-invoke-method stream 'write (vlax-get-property xmlhttp 'responseBody))
+          (vlax-invoke-method stream 'saveToFile yerel-yol 2)
+          (vlax-invoke-method stream 'close)
+          (vlax-release-object stream)
+        )
+      )
+      (vlax-release-object xmlhttp)
     )
-    (princ (strcat "\n[SAT Bulut HATA]: Dosya indirilemedi! Lutfen URL'yi kontrol edin."))
+  )
+  (findfile yerel-yol)
+)
+
+;; ARTIK DOSYALARI DWG OLARAK INDIRIYORUZ
+(defun SaitBlokCek (url / blok-adi temp-yol)
+  (setq blok-adi (vl-filename-base url))
+  (if (tblsearch "BLOCK" blok-adi)
+    (progn
+      (princ (strcat "\n[SAT Bulut]: '" blok-adi "' cizimde var, ekleniyor..."))
+      (command "._-INSERT" blok-adi pause 1 1 0)
+    )
+    (progn
+      (princ (strcat "\n[SAT Bulut]: '" blok-adi "' indiriliyor..."))
+      (setq temp-yol (strcat (getenv "TEMP") "\\" blok-adi ".dwg"))
+      (if (SaitBulutIndir url temp-yol)
+        (progn
+          (princ "\n[SAT Bulut]: Indirme tamamlandi, ekleniyor...")
+          (command "._-INSERT" temp-yol pause 1 1 0)
+          (princ (strcat "\n[SAT Bulut]: '" blok-adi "' eklendi!"))
+        )
+        (princ (strcat "\n[SAT Bulut HATA]: Dosya indirilemedi! URL: " url))
+      )
+    )
   )
   (princ)
 )
 
-;; ==================================================
-;; 4) KOMUTLARI DWG'YE BAGLAMA
-;; ==================================================
 (defun SaitBlokBagla (komut-adi url)
   (eval (list 'defun (read (strcat "c:" komut-adi)) '() (list 'SaitBlokCek url)))
 )
 
-;; ==================================================
-;; 5) YUKLEME ALANI (SISTEMIN KALBI)
-;; ==================================================
-(princ "\n[SaitAI]: Bilesenler GitHub'dan cekiliyor. Lutfen bekleyin...")
-
+;; ============================================================
+;; LISP VE BLOK LISTESI
+;; ============================================================
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/satjsonyazveoku.lsp")
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/DAIRECIZ.lsp")
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/KARECIZ.lsp")
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/LINECIZ.lsp")
 (SaitScriptCek "https://raw.githubusercontent.com/candemir22/acadmatrix/refs/heads/main/UCGENCIZ.lsp")
 
-;; ALT SATIRA DIKKAT: ARTIK .DWG UZANTILI VE 'blocks' KLASORU EKLENDI
-(SaitBlokBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/blocks/genel_cephe1.dwg")
+;; ALT SATIRA DIKKAT: ARTIK .DWG UZANTILI
+(SaitBlokBagla "GENELCEPHE1" "https://raw.githubusercontent.com/candemir22/acadmatrix/main/bloklar/genel_cephe1.dwg")
 
 (princ "\n[SaitAI]: Sistem Hazir (DWG Modu)!")
-(princ "\n[SaitAI]: Sistem GitHub uzerinden basariyla ateslendi! Degisiklikleri gormek icin SAT komutunu tekrar girin.")
 (princ)
